@@ -385,14 +385,14 @@ def _get_spotify():
 
 def _get_auth_spotify(user):
     global auth_sp
-    if auth_sp == None:
+    if auth_sp == None or user not in auth_sp:
         scope = 'playlist-modify-public playlist-modify-private'
         token = spotipy.util.prompt_for_user_token(user, scope)
         if token:
-            auth_sp = spotipy.Spotify(auth=token)
+            auth_sp = {}
+            auth_sp[user] = spotipy.Spotify(auth=token)
 
-    return auth_sp
-
+    return auth_sp[user]
 
 def _find_playlist_by_name(sp, user, name):
     batch_size = 50
