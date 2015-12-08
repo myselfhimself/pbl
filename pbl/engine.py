@@ -2,10 +2,6 @@
     methods for running a PBL pipeline
 '''
 import standard_plugs
-import threading
-
-envData = threading.local()
-envData.env = {};
 
 def run_source(source, max_tracks=40):
     '''
@@ -60,17 +56,6 @@ def show_source(source, ntracks = 100, props=[]):
         print e
     print
 
-def setEnv(name, value):
-    envData.env[name] = value
-
-def getEnv(name):
-    if name in envData.env:
-        return envData.env[name]
-    else:
-        return None
-
-def clearEnvData():
-    envData.env = {}
 
 class PBLException(Exception):
     def __init__(self, component, reason, cname=''):

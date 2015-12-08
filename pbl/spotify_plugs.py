@@ -70,13 +70,17 @@
         }
 '''
 from track_manager import tlib
-import engine
+from engine import PBLException
 import spotipy
 import spotipy.util
 import pprint
 
 
 from spotipy.oauth2 import SpotifyClientCredentials
+
+spotify = None
+auth_sp = None
+
 
 
 class PlaylistSource(object):
@@ -132,7 +136,7 @@ class PlaylistSource(object):
             results = _get_spotify().user_playlist_tracks(user, playlist_id, 
                 limit=self.limit, offset=self.next_offset)
         except spotipy.SpotifyException as e:
-            raise engine.PBLException(self, e.msg)
+            raise PBLException(self, e.msg)
 
         self.total = results['total']
         for item in results['items']:
@@ -152,7 +156,7 @@ class PlaylistSource(object):
                 msg = "Can't find playlist named " + self.name
                 if self.user:
                     msg += ' for user ' + self.user
-                raise engine.PBLException(self, msg)
+                raise PBLException(self, msg)
 
         if self.uri and self.cur_index >= len(self.tracks) \
             and len(self.tracks) < self.total:
@@ -183,13 +187,13 @@ class TrackSource(object):
             try:
                 results = _get_spotify().tracks(self.uris)
             except spotipy.SpotifyException as e:
-                raise engine.PBLException(self, e.msg)
+                raise PBLException(self, e.msg)
             for track in results['tracks']:
                 if track and 'id' in track:
                     self.buffer.append(track['id'])
                     _add_track(self.name, track)
                 else:
-                    raise engine.PBLException(self, 'bad track')
+                    raise PBLException(self, 'bad track')
                 
         if len(self.buffer) > 0:
             return self.buffer.pop(0)
@@ -215,9 +219,9 @@ class TrackSourceByName(object):
                     self.uri = track['id']
                     return self.uri
                 else:
-                    raise engine.PBLException(self, "Can't find that track")
+                    raise PBLException(self, "Can't find that track")
             except spotipy.SpotifyException as e:
-                raise engine.PBLException(self, e.msg)
+                raise PBLException(self, e.msg)
         else:
             return None
 
@@ -256,13 +260,13 @@ class AlbumSource(object):
                 try:
                     results = _get_spotify().album_tracks(id)
                 except spotipy.SpotifyException as e:
-                    raise engine.PBLException(self, e.msg)
+                    raise PBLException(self, e.msg)
 
                 for track in results['items']:
                     self.buffer.append(track['id'])
                     _add_track(self.name, track)
             else:
-                raise engine.PBLException(self, "Can't find that album");
+                raise PBLException(self, "Can't find that album");
 
         if len(self.buffer) > 0:
             return self.buffer.pop(0)
@@ -293,12 +297,12 @@ class ArtistTopTracks(object):
                 try:
                     results = _get_spotify().artist_top_tracks(id)
                 except spotipy.SpotifyException as e:
-                    raise engine.PBLException(self, e.msg)
+                    raise PBLException(self, e.msg)
                 for track in results['tracks']:
                     self.buffer.append(track['id'])
                     _add_track(self.name, track)
             else:
-                raise engine.PBLException(self, "Can't find that artist")
+                raise PBLException(self, "Can't find that artist")
 
         if len(self.buffer) > 0:
             return self.buffer.pop(0)
@@ -343,7 +347,7 @@ class PlaylistSave(object):
             user = self.user
             pid = None
 
-        sp = _get_spotify()
+        sp = _get_auth_spotify(user)
         if sp:
             if not pid:
                 if self.playlist_name:
@@ -373,20 +377,13 @@ class PlaylistSave(object):
             print "Can't get authenticated access to spotify"
 
 def _get_spotify():
-    spotify = engine.getEnv('spotify')
+    global spotify
     if spotify == None:
-        auth_token = engine.getEnv('spotify_auth_token')
-        if auth_token:
-            print 'spotify auth token', auth_token
-            spotify = spotipy.Spotify(auth=auth_token)
-        else:
-            spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
+        spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
         spotify.trace = False
-        engine.setEnv('spotify', spotify)
     return spotify
 
 def _get_auth_spotify(user):
-    # deprecated
     global auth_sp
     if auth_sp == None:
         scope = 'playlist-modify-public playlist-modify-private'

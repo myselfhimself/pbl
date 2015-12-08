@@ -1,5 +1,3 @@
-name = 'none'
-
 def put(type, tid, obj):
     pass
 
